@@ -142,7 +142,7 @@
     </div>
 
     <script>
-        // Project Firebase Config
+        // Your actual Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyB2Bf8B1S0ITw_21uYQtWKUVY-VrFL6P3k",
             authDomain: "eternalsouls.firebaseapp.com",
@@ -156,20 +156,31 @@
         let db = null;
         let userId = null;
 
-        if(firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        // Bulletproof Initialization
+        try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
             
             firebase.auth().onAuthStateChanged((user) => {
-                if (user) {
+                if (user && !user.isAnonymous) {
                     userId = user.uid;
-                    document.getElementById('btn-login').style.display = 'none';
+                    document.getElementById('btn-login').style.display = 'none'; // Hide when logged in
                     loadCloudData();
                 } else {
-                    document.getElementById('btn-login').style.display = 'block';
+                    document.getElementById('btn-login').style.display = 'block'; // Show if not logged in
                     loadLocalData();
                 }
             });
+        } catch (error) {
+            console.error("Firebase blocked by browser shields:", error);
+            // Fallback UI if Firebase is blocked (e.g. Brave Shields)
+            const loginBtn = document.getElementById('btn-login');
+            loginBtn.style.display = 'block';
+            loginBtn.innerText = "Cloud Save Blocked (Disable Ad-Blocker)";
+            loginBtn.disabled = true;
+            loginBtn.style.borderColor = "#8b0000";
+            loginBtn.style.color = "#8b0000";
+            loadLocalData(); 
         }
 
         function signInWithGoogle() {
@@ -346,9 +357,13 @@
         }
 
         function loadCloudData() {
+            if(!db || !userId) return loadLocalData();
             db.collection('users').doc(userId).get().then(doc => {
                 if(doc.exists) state = doc.data(); else loadLocalData();
                 updateUI();
+            }).catch(err => {
+                console.error("Cloud load error:", err);
+                loadLocalData();
             });
         }
 
