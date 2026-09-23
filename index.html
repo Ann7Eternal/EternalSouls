@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EternalSouls | Sanctuary</title>
+    <meta name="theme-color" content="#121212">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=EB+Garamond:wght@400;600&display=swap');
+
+        :root {
+            --bg-dark: #0a0a0a;
+            --panel-bg: #161616;
+            --gold: #d4af37;
+            --gold-dim: #8a7322;
+            --text-main: #cccccc;
+            --danger: #8b0000;
+            --success: #2e8b57;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'EB Garamond', serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Cinzel', serif;
+            color: var(--gold);
+            text-align: center;
+            font-weight: 400;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            position: relative;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            pointer-events: none;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 15px;
+            background: #0f0f0f;
+            border: 1px solid #222;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            color: var(--gold);
+            font-family: 'Cinzel', serif;
+            margin: 5px 0;
+        }
+
+        /* Progress Bar */
+        .meter-bg {
+            background: #222;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 10px 0;
+            border: 1px solid #000;
+        }
+
+        .meter-fill {
+            background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease-out;
+        }
+
+        /* Inputs & Buttons */
+        select, input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #1a1a1a;
+            color: var(--gold);
+            border: 1px solid #444;
+            font-family: 'EB Garamond', serif;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            color: var(--gold);
+            border: 1px solid var(--gold-dim);
+            font-family: 'Cinzel', serif;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: rgba(212, 175, 55, 0.1);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+        }
+
+        button:disabled {
+            border-color: #444;
+            color: #666;
+            cursor: not-allowed;
+            background: none;
+            box-shadow: none;
+        }
+
+        .btn-rest {
+            border-color: var(--success);
+            color: var(--success);
+            margin-top: 30px;
+        }
+
+        .btn-rest:hover {
+            background: rgba(46, 139, 87, 0.1);
+            box-shadow: 0 0 15px rgba(46, 139, 87, 0.3);
+        }
+
+        /* Messages */
+        #message-overlay {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            border: 1px solid var(--gold);
+            padding: 30px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+            font-family: 'Cinzel', serif;
+            color: var(--gold);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.2);
+        }
+
+        /* Utility */
+        .hidden { display: none; }
+        .combat-list { padding-left: 20px; line-height: 1.6; }
+    </style>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <h1>EternalSouls</h1>
+        
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div style="font-size: 0.9rem; letter-spacing: 1px;">LEVEL</div>
+                <div class="stat-value" id="ui-level">1</div>
+            </div>
+            <div class="stat-box">
+                <div style="font-size: 0.9rem; letter-spacing: 1px;">STREAK</div>
+                <div class="stat-value" id="ui-streak">0</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>The Boss Meter</h2>
+            <p style="text-align: center; margin: 0; font-size: 0.9rem;">Weight: <span id="ui-weight">52</span>kg / 65kg</p>
+            <div class="meter-bg">
+                <div class="meter-fill" id="weight-bar"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Estus Flasks</h2>
+            <p>Hydration: 4 Liters Required</p>
+            <div class="meter-bg">
+                <div class="meter-fill" id="water-bar" style="background: linear-gradient(90deg, #1e90ff, #00bfff);"></div>
+            </div>
+            <button id="btn-water" onclick="drinkEstus()">Drink Estus (+1L)</button>
+        </div>
+
+        <div class="panel">
+            <h2>Absorb Runes</h2>
+            <p>Calories: <span id="ui-calories">0</span> / 2700 Kcal</p>
+            <div class="meter-bg">
+                <div class="meter-fill" id="calorie-bar"></div>
+            </div>
+            
+            <select id="meal-selector" onchange="toggleCustomMeal()">
+                <option value="0">Select Consumed Item...</option>
+                <option value="400">Breakfast Shake (400 Kcal)</option>
+                <option value="800">₹90 Thali (800 Kcal)</option>
+                <option value="350">Cafe Snack (350 Kcal)</option>
+                <option value="custom">Custom Cheat Meal / Other...</option>
+            </select>
+
+            <div id="custom-meal-div" class="hidden">
+                <input type="text" id="custom-meal-name" placeholder="Name of item...">
+                <input type="number" id="custom-meal-cal" placeholder="Calories...">
+            </div>
+
+            <button onclick="absorbRunes()">Absorb</button>
+        </div>
+
+        <div class="panel">
+            <h2>Combat Log</h2>
+            <h3 id="workout-day-title" style="color: var(--text-main); font-size: 1.2rem; margin-bottom: 5px;">Day 1: Back & Biceps</h3>
+            <ul class="combat-list" id="workout-list">
+                <!-- Injected via JS -->
+            </ul>
+            <button id="btn-workout" onclick="completeWorkout()">Mark Combat Victorious</button>
+        </div>
+
+        <button class="btn-rest" onclick="restAtBonfire()">REST AT BONFIRE (End Day)</button>
+        
+        <button onclick="requestNotificationPermission()" style="margin-top: 15px; border-color: #555; color: #888;">
+            🔔 Summon Daily Reminders (9 PM)
+        </button>
+    </div>
+
+    <div id="message-overlay">
+        <h2 id="msg-title" style="margin-top:0;"></h2>
+        <p id="msg-body"></p>
+        <button onclick="closeMessage()">Acknowledge</button>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. FIREBASE CONFIGURATION (ADD YOURS HERE)
+        // ==========================================
+        const firebaseConfig = {
+          apiKey: "AIzaSyB2Bf8B1S0ITw_21uYQtWKUVY-VrFL6P3k",
+          authDomain: "eternalsouls.firebaseapp.com",
+          projectId: "eternalsouls",
+          storageBucket: "eternalsouls.firebasestorage.app",
+          messagingSenderId: "884926707986",
+          appId: "1:884926707986:web:1afee5ea4becacd11f5bcb",
+          measurementId: "G-R7WE41SB6C"
+        };
+
+        // Initialize Firebase ONLY if config is valid
+        let db = null;
+        let userId = null;
+        if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            firebase.auth().signInAnonymously().then((userCred) => {
+                userId = userCred.user.uid;
+                loadCloudData();
+            }).catch(error => console.warn("Firebase Auth Error:", error));
+        } else {
+            console.warn("Running locally. Add Firebase config for cloud sync.");
+            loadLocalData();
+        }
+
+        // ==========================================
+        // 2. GAME STATE & LOGIC
+        // ==========================================
+        let state = {
+            level: 1,
+            xp: 0,
+            streak: 0,
+            weight: 52,
+            today: {
+                waterLiters: 0,
+                calories: 0,
+                workoutDone: false,
+                workoutDayIndex: 0
+            }
+        };
+
+        const workouts = [
+            { title: "Day 1: Back & Biceps", exercises: ["Rest-Pause Pull-ups", "Chin-ups", "Backpack Curls", "Dead Hangs"] },
+            { title: "Day 2: Chest, Shoulders, Triceps", exercises: ["Standard Push-ups", "Pike Push-ups", "Diamond Push-ups", "Overhead Press"] },
+            { title: "Day 3: Lower Body", exercises: ["Backpack Squats", "Bulgarian Split Squats", "Glute Bridges", "Calf Raises"] },
+            { title: "Day 4: Arms & Core", exercises: ["Close-Grip Chin-ups", "Tricep Extensions", "Negative Pull-ups", "Planks"] },
+            { title: "Day 5: Upper Body Power", exercises: ["Weighted Pull-ups", "Decline Push-ups", "Lateral Raises", "Hollow Body Holds"] },
+            { title: "Day 6: Lower Body & Stamina", exercises: ["Jump Squats", "Walking Lunges", "Wall Sits", "Burpees"] }
+        ];
+
+        function updateUI() {
+            document.getElementById('ui-level').innerText = state.level;
+            document.getElementById('ui-streak').innerText = state.streak;
+            document.getElementById('ui-weight').innerText = state.weight;
+            
+            // Progress bars
+            let weightPercent = Math.min(100, Math.max(0, ((state.weight - 52) / (65 - 52)) * 100));
+            document.getElementById('weight-bar').style.width = weightPercent + "%";
+            
+            document.getElementById('water-bar').style.width = (state.today.waterLiters / 4) * 100 + "%";
+            document.getElementById('ui-calories').innerText = state.today.calories;
+            document.getElementById('calorie-bar').style.width = Math.min(100, (state.today.calories / 2700) * 100) + "%";
+
+            // Workout
+            const wDay = workouts[state.today.workoutDayIndex];
+            document.getElementById('workout-day-title').innerText = wDay.title;
+            const wList = document.getElementById('workout-list');
+            wList.innerHTML = "";
+            wDay.exercises.forEach(ex => {
+                wList.innerHTML += `<li>${ex}</li>`;
+            });
+
+            if(state.today.workoutDone) {
+                const btn = document.getElementById('btn-workout');
+                btn.innerText = "Combat Conquered";
+                btn.disabled = true;
+                wList.style.textDecoration = "line-through";
+                wList.style.color = "#555";
+            }
+        }
+
+        // --- Actions ---
+        function drinkEstus() {
+            if(state.today.waterLiters < 4) {
+                state.today.waterLiters += 1;
+                saveData();
+                updateUI();
+            }
+        }
+
+        function toggleCustomMeal() {
+            const sel = document.getElementById('meal-selector').value;
+            const div = document.getElementById('custom-meal-div');
+            if(sel === 'custom') {
+                div.classList.remove('hidden');
+            } else {
+                div.classList.add('hidden');
+            }
+        }
+
+        function absorbRunes() {
+            const sel = document.getElementById('meal-selector').value;
+            let cal = 0;
+            if(sel === 'custom') {
+                cal = parseInt(document.getElementById('custom-meal-cal').value);
+                if(!cal || cal <= 0) return showMessage("Invalid Runes", "Enter a valid calorie amount.");
+            } else if(sel !== '0') {
+                cal = parseInt(sel);
+            } else {
+                return;
+            }
+            
+            state.today.calories += cal;
+            document.getElementById('meal-selector').value = '0';
+            toggleCustomMeal();
+            saveData();
+            updateUI();
+        }
+
+        function completeWorkout() {
+            state.today.workoutDone = true;
+            saveData();
+            updateUI();
+        }
+
+        function restAtBonfire() {
+            const success = (state.today.waterLiters >= 4 && state.today.calories >= 2700 && state.today.workoutDone);
+            
+            if(success) {
+                state.streak++;
+                state.xp += 100 * (state.streak >= 3 ? 1.5 : 1); // Grace multiplier
+                if(state.xp >= state.level * 500) {
+                    state.level++;
+                    state.xp = 0;
+                    showMessage("Level Up", `You are now Level ${state.level}. Vitality restored.`);
+                } else {
+                    showMessage("Bonfire Lit", "A perfect day. Progress secured.");
+                }
+            } else {
+                state.streak = 0;
+                state.xp = Math.max(0, state.xp - 50);
+                showMessage("Hollowed", "You failed to meet the requirements. Streak lost. XP drained.");
+            }
+
+            // Reset day and advance workout
+            state.today.waterLiters = 0;
+            state.today.calories = 0;
+            state.today.workoutDone = false;
+            state.today.workoutDayIndex = (state.today.workoutDayIndex + 1) % workouts.length;
+            
+            saveData();
+            updateUI();
+            
+            setTimeout(() => location.reload(), 3000);
+        }
+
+        // --- Data Persistence ---
+        function saveData() {
+            localStorage.setItem('eternalSoulsState', JSON.stringify(state));
+            if(db && userId) {
+                db.collection('users').doc(userId).set(state);
+            }
+        }
+
+        function loadLocalData() {
+            const saved = localStorage.getItem('eternalSoulsState');
+            if(saved) state = JSON.parse(saved);
+            updateUI();
+        }
+
+        function loadCloudData() {
+            db.collection('users').doc(userId).get().then(doc => {
+                if(doc.exists) {
+                    state = doc.data();
+                } else {
+                    loadLocalData(); // fallback
+                }
+                updateUI();
+            });
+        }
+
+        // --- UI Utils ---
+        function showMessage(title, body) {
+            document.getElementById('msg-title').innerText = title;
+            document.getElementById('msg-body').innerText = body;
+            document.getElementById('message-overlay').style.display = 'block';
+        }
+        function closeMessage() {
+            document.getElementById('message-overlay').style.display = 'none';
+        }
+
+        // ==========================================
+        // 3. DYNAMIC SERVICE WORKER & NOTIFICATIONS
+        // ==========================================
+        
+        // Dynamically create the Service Worker without needing a separate file
+        const swCode = `
+            self.addEventListener('install', (event) => self.skipWaiting());
+            self.addEventListener('activate', (event) => console.log('SW Active'));
+            self.addEventListener('notificationclick', (event) => {
+                event.notification.close();
+                event.waitUntil(
+                    clients.matchAll({ type: 'window' }).then(windowClients => {
+                        for (let i = 0; i < windowClients.length; i++) {
+                            if ('focus' in windowClients[i]) return windowClients[i].focus();
+                        }
+                        if (clients.openWindow) return clients.openWindow('/');
+                    })
+                );
+            });
+        `;
+        
+        if ('serviceWorker' in navigator) {
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            navigator.serviceWorker.register(swUrl).then(() => console.log("Dynamic SW Registered"));
+        }
+
+        function requestNotificationPermission() {
+            if (!("Notification" in window)) {
+                showMessage("Denied", "Your browser does not support summoning bells.");
+                return;
+            }
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    showMessage("Bells Activated", "The bells will toll for you daily at 9 PM.");
+                    scheduleReminders();
+                }
+            });
+        }
+
+        function scheduleReminders() {
+            const now = new Date();
+            let target = new Date(now);
+            target.setHours(21, 0, 0, 0);
+            if (now > target) target.setDate(target.getDate() + 1);
+            
+            const delay = target.getTime() - now.getTime();
+            setTimeout(() => {
+                if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                    navigator.serviceWorker.ready.then(reg => {
+                        reg.showNotification("The Bonfire Fades...", {
+                            body: "Return to the sanctuary. Log your Estus, Runes, and Combat for the day.",
+                            icon: "https://cdn-icons-png.flaticon.com/512/725/725064.png"
+                        });
+                    });
+                }
+                scheduleReminders(); // recurse
+            }, delay);
+        }
+
+        if ("Notification" in window && Notification.permission === "granted") {
+            scheduleReminders();
+        }
+
+        // Init App
+        if(!db) loadLocalData();
+    </script>
+</body>
+</html>
