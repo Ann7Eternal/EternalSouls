@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EternalSouls | Sanctuary</title>
-	<link rel="manifest" href='data:application/manifest+json;utf8,{"name":"EternalSouls","short_name":"EternalSouls","display":"standalone","background_color":"#0a0a0a","theme_color":"#121212","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/725/725064.png","sizes":"512x512","type":"image/png"}]}'>
+	<link rel="manifest" href='data:application/manifest+json;utf8,{"name":"EternalSouls","short_name":"EternalSouls","start_url":".","display":"standalone","background_color":"#0a0a0a","theme_color":"#121212","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/725/725064.png","sizes":"192x192","type":"image/png"},{"src":"https://cdn-icons-png.flaticon.com/512/725/725064.png","sizes":"512x512","type":"image/png"}]}'>
     <meta name="theme-color" content="#121212">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=EB+Garamond:wght@400;600&display=swap');
@@ -455,6 +455,7 @@
         const swCode = `
             self.addEventListener('install', (event) => self.skipWaiting());
             self.addEventListener('activate', (event) => console.log('SW Active'));
+            self.addEventListener('fetch', (event) => {}); // <-- Chrome strictly requires this line
             self.addEventListener('notificationclick', (event) => {
                 event.notification.close();
                 event.waitUntil(
