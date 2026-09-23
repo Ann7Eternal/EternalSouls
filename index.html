@@ -267,15 +267,33 @@
         };
 
         // Initialize Firebase ONLY if config is valid
+        // Initialize Firebase ONLY if config is valid
         let db = null;
         let userId = null;
-        if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        if(firebaseConfig.apiKey !== "AIzaSyB2Bf8B1S0ITw_21uYQtWKUVY-VrFL6P3k") {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
-            firebase.auth().signInAnonymously().then((userCred) => {
-                userId = userCred.user.uid;
-                loadCloudData();
-            }).catch(error => console.warn("Firebase Auth Error:", error));
+            
+            // Set up Google Auth Provider
+            const provider = new firebase.auth.GoogleAuthProvider();
+            
+            // Check if user is already logged in
+            firebase.auth().onAuthStateChanged((user) => {
+                if (user) {
+                    userId = user.uid;
+                    loadCloudData(); // Load your streak
+                } else {
+                    // Trigger Google Sign-In popup if not logged in
+                    firebase.auth().signInWithPopup(provider)
+                        .then((result) => {
+                            userId = result.user.uid;
+                            loadCloudData();
+                        }).catch((error) => {
+                            console.error("Auth Failed:", error);
+                            loadLocalData(); // Fallback
+                        });
+                }
+            });
         } else {
             console.warn("Running locally. Add Firebase config for cloud sync.");
             loadLocalData();
