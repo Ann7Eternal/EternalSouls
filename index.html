@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EternalSouls | Sanctuary</title>
     <meta name="theme-color" content="#121212">
-    <!-- PWA Manifest Data URI -->
     <link rel="manifest" href="./manifest.json">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=EB+Garamond:wght@400;600&display=swap');
@@ -16,7 +15,6 @@
             --gold: #d4af37;
             --gold-dim: #8a7322;
             --text-main: #cccccc;
-            --danger: #8b0000;
             --success: #2e8b57;
             --google-blue: #4285F4;
         }
@@ -32,7 +30,7 @@
             align-items: center;
         }
 
-        h1, h2, h3 { font-family: 'Cinzel', serif; color: var(--gold); text-align: center; font-weight: 400; }
+        h1, h2, h3 { font-family: 'Cinzel', serif; color: var(--gold); text-align: center; font-weight: 400; margin-top: 0; }
         .container { width: 100%; max-width: 500px; }
         
         .panel {
@@ -56,7 +54,8 @@
         .meter-bg { background: #222; height: 12px; border-radius: 6px; overflow: hidden; margin: 10px 0; border: 1px solid #000; }
         .meter-fill { background: linear-gradient(90deg, var(--gold-dim), var(--gold)); height: 100%; width: 0%; transition: width 0.5s ease-out; }
 
-        select, input { width: 100%; padding: 10px; margin: 10px 0; background: #1a1a1a; color: var(--gold); border: 1px solid #444; font-family: 'EB Garamond', serif; font-size: 1rem; box-sizing: border-box; }
+        select, input[type="text"], input[type="number"] { width: 100%; padding: 10px; margin: 10px 0; background: #1a1a1a; color: var(--gold); border: 1px solid #444; font-family: 'EB Garamond', serif; font-size: 1rem; box-sizing: border-box; }
+        
         button { width: 100%; padding: 12px; background: transparent; color: var(--gold); border: 1px solid var(--gold-dim); font-family: 'Cinzel', serif; font-size: 1.1rem; cursor: pointer; transition: all 0.3s ease; margin-top: 10px; }
         button:hover { background: rgba(212, 175, 55, 0.1); box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); }
         button:disabled { border-color: #444; color: #666; cursor: not-allowed; background: none; box-shadow: none; }
@@ -64,9 +63,16 @@
         .btn-rest { border-color: var(--success); color: var(--success); margin-top: 30px; }
         .btn-google { border-color: var(--google-blue); color: var(--google-blue); display: none; margin-bottom: 20px; }
 
-        #message-overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); border: 1px solid var(--gold); padding: 30px; text-align: center; z-index: 1000; display: none; font-family: 'Cinzel', serif; color: var(--gold); box-shadow: 0 0 30px rgba(212, 175, 55, 0.2); }
+        /* Checklist Styles */
+        .exercise-item { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; padding: 10px; background: #0f0f0f; border: 1px solid #222; border-radius: 4px; }
+        .exercise-item input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; accent-color: var(--gold); flex-shrink: 0; }
+        .exercise-details { display: flex; flex-direction: column; }
+        .exercise-name { font-weight: bold; color: var(--gold); font-size: 1.1rem; }
+        .exercise-sets { font-size: 0.9rem; color: #888; margin-top: 3px; }
+        .strike { text-decoration: line-through; opacity: 0.5; }
+
+        #message-overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); border: 1px solid var(--gold); padding: 30px; text-align: center; z-index: 1000; display: none; font-family: 'Cinzel', serif; color: var(--gold); box-shadow: 0 0 30px rgba(212, 175, 55, 0.2); width: 80%; max-width: 400px; }
         .hidden { display: none; }
-        .combat-list { padding-left: 20px; line-height: 1.6; }
     </style>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -120,8 +126,8 @@
 
         <div class="panel">
             <h2>Combat Log</h2>
-            <h3 id="workout-day-title" style="color: var(--text-main); font-size: 1.2rem; margin-bottom: 5px;">Day 1: Back & Biceps</h3>
-            <ul class="combat-list" id="workout-list"></ul>
+            <h3 id="workout-day-title" style="color: var(--text-main); font-size: 1.2rem; margin-bottom: 15px;">Day 1: Back & Biceps</h3>
+            <div id="workout-list"></div>
             <button id="btn-workout" onclick="completeWorkout()">Mark Combat Victorious</button>
         </div>
 
@@ -136,25 +142,24 @@
     </div>
 
     <script>
-        // Paste your actual config here
+        // Project Firebase Config
         const firebaseConfig = {
-          apiKey: "AIzaSyB2Bf8B1S0ITw_21uYQtWKUVY-VrFL6P3k",
-          authDomain: "eternalsouls.firebaseapp.com",
-          projectId: "eternalsouls",
-          storageBucket: "eternalsouls.firebasestorage.app",
-          messagingSenderId: "884926707986",
-          appId: "1:884926707986:web:1afee5ea4becacd11f5bcb",
-          measurementId: "G-R7WE41SB6C"
+            apiKey: "AIzaSyB2Bf8B1S0ITw_21uYQtWKUVY-VrFL6P3k",
+            authDomain: "eternalsouls.firebaseapp.com",
+            projectId: "eternalsouls",
+            storageBucket: "eternalsouls.firebasestorage.app",
+            messagingSenderId: "884926707986",
+            appId: "1:884926707986:web:1afee5ea4becacd11f5bcb",
+            measurementId: "G-R7WE41SB6C"
         };
 
         let db = null;
         let userId = null;
 
-        if(firebaseConfig.apiKey !== "AIzaSyB2Bf8B1S0ITw_21uYQtWKUVY-VrFL6P3k") {
+        if(firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
             
-            // Listen for login state changes
             firebase.auth().onAuthStateChanged((user) => {
                 if (user) {
                     userId = user.uid;
@@ -167,21 +172,75 @@
             });
         }
 
-        // Triggered by the physical button tap
         function signInWithGoogle() {
             const provider = new firebase.auth.GoogleAuthProvider();
-            firebase.auth().signInWithRedirect(provider);
+            firebase.auth().signInWithPopup(provider)
+                .then((result) => {
+                    showMessage("Link Successful", "Your soul is tethered to the cloud.");
+                })
+                .catch((error) => {
+                    showMessage("Auth Failed", error.message);
+                    console.error(error);
+                });
         }
 
         let state = { level: 1, xp: 0, streak: 0, weight: 52, today: { waterLiters: 0, calories: 0, workoutDone: false, workoutDayIndex: 0 }};
 
         const workouts = [
-            { title: "Day 1: Back & Biceps", exercises: ["Rest-Pause Pull-ups", "Chin-ups", "Backpack Curls", "Dead Hangs"] },
-            { title: "Day 2: Chest, Shoulders, Triceps", exercises: ["Standard Push-ups", "Pike Push-ups", "Diamond Push-ups", "Overhead Press"] },
-            { title: "Day 3: Lower Body", exercises: ["Backpack Squats", "Bulgarian Split Squats", "Glute Bridges", "Calf Raises"] },
-            { title: "Day 4: Arms & Core", exercises: ["Close-Grip Chin-ups", "Tricep Extensions", "Negative Pull-ups", "Planks"] },
-            { title: "Day 5: Upper Body Power", exercises: ["Weighted Pull-ups", "Decline Push-ups", "Lateral Raises", "Hollow Body Holds"] },
-            { title: "Day 6: Lower Body & Stamina", exercises: ["Jump Squats", "Walking Lunges", "Wall Sits", "Burpees"] }
+            { 
+                title: "Day 1: Back & Biceps", 
+                exercises: [
+                    { name: "Rest-Pause Pull-ups", sets: "3 Sets", reps: "To Failure" },
+                    { name: "Chin-ups", sets: "3 Sets", reps: "8-10 Reps" },
+                    { name: "Backpack Curls", sets: "4 Sets", reps: "10-12 Reps" },
+                    { name: "Dead Hangs", sets: "3 Sets", reps: "60 Seconds" }
+                ] 
+            },
+            { 
+                title: "Day 2: Chest, Shoulders, Triceps", 
+                exercises: [
+                    { name: "Standard Push-ups", sets: "3 Sets", reps: "To Failure" },
+                    { name: "Pike Push-ups", sets: "3 Sets", reps: "8-12 Reps" },
+                    { name: "Diamond Push-ups", sets: "3 Sets", reps: "10-15 Reps" },
+                    { name: "Overhead Press", sets: "4 Sets", reps: "10-12 Reps" }
+                ] 
+            },
+            { 
+                title: "Day 3: Lower Body", 
+                exercises: [
+                    { name: "Backpack Squats", sets: "4 Sets", reps: "12-15 Reps" },
+                    { name: "Bulgarian Split Squats", sets: "3 Sets", reps: "10 Reps / Leg" },
+                    { name: "Glute Bridges", sets: "3 Sets", reps: "15-20 Reps" },
+                    { name: "Calf Raises", sets: "4 Sets", reps: "25 Reps" }
+                ] 
+            },
+            { 
+                title: "Day 4: Arms & Core", 
+                exercises: [
+                    { name: "Close-Grip Chin-ups", sets: "3 Sets", reps: "8-10 Reps" },
+                    { name: "Tricep Extensions", sets: "4 Sets", reps: "12-15 Reps" },
+                    { name: "Negative Pull-ups", sets: "3 Sets", reps: "5 Reps (Slow descent)" },
+                    { name: "Planks", sets: "3 Sets", reps: "60 Seconds" }
+                ] 
+            },
+            { 
+                title: "Day 5: Upper Body Power", 
+                exercises: [
+                    { name: "Weighted Pull-ups", sets: "3 Sets", reps: "5-8 Reps" },
+                    { name: "Decline Push-ups", sets: "3 Sets", reps: "10-15 Reps" },
+                    { name: "Lateral Raises", sets: "4 Sets", reps: "15-20 Reps" },
+                    { name: "Hollow Body Holds", sets: "3 Sets", reps: "45 Seconds" }
+                ] 
+            },
+            { 
+                title: "Day 6: Lower Body & Stamina", 
+                exercises: [
+                    { name: "Jump Squats", sets: "3 Sets", reps: "15 Reps" },
+                    { name: "Walking Lunges", sets: "3 Sets", reps: "20 Steps" },
+                    { name: "Wall Sits", sets: "3 Sets", reps: "60 Seconds" },
+                    { name: "Burpees", sets: "3 Sets", reps: "15 Reps" }
+                ] 
+            }
         ];
 
         function updateUI() {
@@ -197,14 +256,36 @@
             document.getElementById('workout-day-title').innerText = wDay.title;
             const wList = document.getElementById('workout-list');
             wList.innerHTML = "";
-            wDay.exercises.forEach(ex => wList.innerHTML += `<li>${ex}</li>`);
+            
+            wDay.exercises.forEach((ex, index) => {
+                const isDone = state.today.workoutDone ? 'checked disabled' : '';
+                const strikeClass = state.today.workoutDone ? 'strike' : '';
+                
+                wList.innerHTML += `
+                    <div class="exercise-item ${strikeClass}" id="ex-div-${index}">
+                        <input type="checkbox" id="ex-check-${index}" ${isDone} onchange="toggleExercise(${index})">
+                        <div class="exercise-details">
+                            <span class="exercise-name">${ex.name}</span>
+                            <span class="exercise-sets">${ex.sets} | ${ex.reps}</span>
+                        </div>
+                    </div>
+                `;
+            });
 
             if(state.today.workoutDone) {
                 const btn = document.getElementById('btn-workout');
                 btn.innerText = "Combat Conquered";
                 btn.disabled = true;
-                wList.style.textDecoration = "line-through";
-                wList.style.color = "#555";
+            }
+        }
+
+        function toggleExercise(index) {
+            const checkbox = document.getElementById(`ex-check-${index}`);
+            const div = document.getElementById(`ex-div-${index}`);
+            if(checkbox.checked) {
+                div.classList.add('strike');
+            } else {
+                div.classList.remove('strike');
             }
         }
 
@@ -230,7 +311,11 @@
             updateUI();
         }
 
-        function completeWorkout() { state.today.workoutDone = true; saveData(); updateUI(); }
+        function completeWorkout() { 
+            state.today.workoutDone = true; 
+            saveData(); 
+            updateUI(); 
+        }
 
         function restAtBonfire() {
             const success = (state.today.waterLiters >= 4 && state.today.calories >= 2700 && state.today.workoutDone);
@@ -274,7 +359,6 @@
         }
         function closeMessage() { document.getElementById('message-overlay').style.display = 'none'; }
 
-        // Proper Service Worker Registration linking to your new file
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
